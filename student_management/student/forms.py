@@ -3,6 +3,7 @@ from django.contrib.auth.forms  import UserCreationForm
 from .models import User
 from .models import StudentProfile
 from datetime import date
+from .models import Course
 class UserRegisterForm(UserCreationForm):
     class Meta:
         model=User
@@ -50,3 +51,11 @@ class AdminStudentEditForm(forms.ModelForm):
     class Meta:
         model=User
         fields=['username','email']
+class CourseForm(forms.ModelForm):
+    class Meta:
+        model=Course
+        fields=['course_name','course_description']
+        widgets={
+            'course_name':forms.TextInput(attrs={'class':'form-control'}),
+            'course_description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+        }

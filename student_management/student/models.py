@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.contrib.auth import get_user_model
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 class User(AbstractUser):
     ROLE_CHOICES=(
         ('Admin','Admin'),#first admin for storing name in db,and second for what to show the user
@@ -20,6 +21,8 @@ def set_admin_role(sender, instance, created, **kwargs):
 class Course(models.Model):
     course_name=models.CharField(max_length=50)
     course_description=models.TextField()
+    created_at=models.DateTimeField(auto_now_add=True)# automatically set when created
+    updated_at=models.DateTimeField(auto_now=True) # automatically updated when saved
     def __str__(self):
         return self.course_name
 class StudentProfile(models.Model):

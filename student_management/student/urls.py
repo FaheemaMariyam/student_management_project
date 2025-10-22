@@ -11,6 +11,8 @@ urlpatterns=[
     path('dashboard/students',views.students_list,name='students_list'),
     path('dashboard/add',views.add_students,name='add_students'),
     path('dashboard/students/edit/<int:pk>/',views.edit_students,name='edit_students'),
-    path('dashboard/students/delete/<int:pk>/',views.delete_students,name='delete_students')
+    path('dashboard/students/delete/<int:pk>/',views.delete_students,name='delete_students'),
+    path('dashboard/courses/',views.course_list,name='course_list'),
+    path('dashboard/add_course',views.add_course,name='add_course')
 ]
 

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course List</title>
+</head>
+<body>
+    <h2>Courses</h2>
+    <table>
+        <tr>
+            <th>Course Name</th>
+            <th>Course Description</th>
+            
+        </tr>
+        {% for course in courses %}
+        <tr>
+            <td>{{course.course_name}}</td>
+            <td>{{course.course_description}}</td>
+        </tr>
+        {%endfor%}
+    </table>
+</body>
+</html>

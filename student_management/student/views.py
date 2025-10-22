@@ -11,15 +11,32 @@ from datetime import date
 from .forms import AdminStudentProfileForm
 
 from .forms import AdminStudentEditForm
+from django.db.models import Q
+from django.core.paginator import Paginator
+from django.core.mail import send_mail
+from django.core.mail import EmailMessage
+from student_management.settings import EMAIL_HOST_USER
+from .emails import send_welcome_email,send_add_student_email
+from .forms import CourseForm
+from .models import Course
 def home(request):
     return render(request,'home.html')
 def register_user(request):
     if request.method=='POST':
         form=UserRegisterForm(request.POST)
         if form.is_valid():
-            form.save()
+            user=form.save()
+            username=user.username
+            email=user.email
+            #welcome email
+            
+            send_welcome_email(email,username)
             messages.success(request,f"Registation successfull,you can login now")
             return redirect('login')
+        
+        else:
+            print(form.errors)  # 🔍 See errors in terminal
+            messages.error(request, "Please correct the errors below.")
     else:
         form=UserRegisterForm()
     return render(request,'register.html',{'form':form})
@@ -44,13 +61,15 @@ def logout_user(request):
     return redirect('home')
 @login_required
 def dashboard(request):
+    students=StudentProfile.objects.filter(user__role='Student')
     user=request.user
     if user.is_superuser or user.role=='Admin':
-        return render(request,'admin_dashboard.html',{'user':user})
+        return render(request,'admin_dashboard.html',{'user':user,'students':students})
     elif user.role=='Student':
         return render(request,'student_dashboard.html',{'user':user})
     else:
         return HttpResponse("Role not specified")
+    
 @login_required
 def student_profile_view(request):
     profile,created=StudentProfile.objects.get_or_create(user=request.user)
@@ -81,8 +100,18 @@ def students_list(request):
         #                                        student_name__istartswith='r'
         #                                        )
         students=StudentProfile.objects.filter(user__role='Student')
-   
-        return render(request,'students_list.html',{'students':students})
+        #get the data from url query parameter'q'
+        query=request.GET.get('q')
+
+        #if user type something
+        if query:
+            students=students.filter(student_name__icontains=query)#icontains=for casesensitivity
+        #pagination
+        paginator=Paginator(students,5)
+        #get page number from query
+        page_number=request.GET.get('page')
+        page_obj=paginator.get_page(page_number)
+        return render(request,'students_list.html',{'students':students,'query':query,'page_obj':page_obj})#query for keep the query in search box
 @staff_member_required
 def add_students(request):
     if request.method=='POST':
@@ -91,6 +120,9 @@ def add_students(request):
         if user_form.is_valid() and profile_form.is_valid():
              # for Create the user first
             user = user_form.save(commit=False)
+            username=user.username
+            raw_password=user_form.cleaned_data['password1']
+            email=user.email
             user.role = 'Student'
             user.save()
              # Create student profile and link the user
@@ -104,10 +136,11 @@ def add_students(request):
                     age-=1
                 student.age=age
             student.save()
+            send_add_student_email(email,username,raw_password)
             messages.success(request,f"{student.student_name} added successfully ")
-            return redirect('students_list')
+            return redirect('dashboard')
     else:
-        user_form=AdminStudentEditForm(instance=student.user)
+        user_form=UserRegisterForm()
         profile_form=AdminStudentProfileForm()
     return render(request,'add_students.html',{'user_form': user_form, 'profile_form': profile_form})
 @staff_member_required
@@ -115,7 +148,7 @@ def edit_students(request, pk):
     students_qset = StudentProfile.objects.filter(pk=pk)
     if not students_qset.exists():
         messages.error(request, "Student not found")
-        return redirect('students_list')
+        return redirect('dashboard')
 
     student = students_qset.first()
     
@@ -136,7 +169,7 @@ def edit_students(request, pk):
 
             student.save()
             messages.success(request, f"{student.student_name} updated successfully")
-            return redirect('students_list')
+            return redirect('dashboard')
     else:
         user_form = AdminStudentEditForm(instance=student.user)
         profile_form = AdminStudentProfileForm(instance=student)
@@ -150,10 +183,25 @@ def delete_students(request,pk):
     students_qset=StudentProfile.objects.filter(pk=pk)
     if not students_qset.exists():
         messages.error(request,f"student not found")
-        return redirect('students_list')
+        return redirect('dashboard')
     student=students_qset.first()
     user=student.user
     student.delete()
     user.delete()
     messages.success(request,f"{student.student_name} has been deleted successfully")
-    return redirect('students_list')
+    return redirect('dashboard')
+@staff_member_required
+def add_course(request):
+    if request.method=='POST':
+        form=CourseForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request,f"course added successfully")
+            return redirect('dashboard')
+    else:
+        form=CourseForm()
+    return render(request,'add_course.html',{'form':form})
+@staff_member_required
+def course_list(request):
+    courses=Course.objects.all()
+    return render(request,'course_list.html',{'courses':courses})
