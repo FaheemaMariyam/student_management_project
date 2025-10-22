@@ -1,0 +1,40 @@
+<h2>All Students</h2>
+<table class="table table-bordered">
+    <tr>
+        <th>Name</th>
+        <th>Roll No</th>
+        <th>Email</th>
+        <th>Course</th>
+        <th>Phone</th>
+        <th>Enrollment Date</th>
+        <th>Address</th>
+        <th>Date of Birth</th>
+        <th>Age</th>
+
+        <th>Profile Photo</th>
+        <th>Actions</th>
+    </tr>
+    {% for s in students %}
+    <tr>
+        <td>{{ s.student_name|default:"Not filled" }}</td>
+        <td>{{ s.student_rollno|default:"Not filled" }}</td>
+        <td>{{ s.user.email|default:"Not filled" }}</td>
+        <td>{{ s.student_course.course_name|default:"Not assigned" }}</td>
+        <td>{{ s.phone|default:"Not filled" }}</td>
+        <td>{{s.student_enrollment_date |default:"Not filled"}}</td>
+        <td>{{s.address|default:"Not filled"}}</td>
+        <td>{{s.date_of_birth |default:"Not filled"}}</td>
+        <td>{{s.age |default:"Not filled"}}</td>
+        <td>
+    {% if s.profile_image %}
+        <img src="{{ s.profile_image.url }}" alt="Profile Photo" width="80" height="80" style="border-radius: 8px;">
+    {% else %}
+        No Photo
+    {% endif %}
+</td>
+     <td><a href="{% url 'edit_students' s.pk %}">Edit</a>
+    <a href="{% url 'delete_students' s.pk %}" onclick="return confirm('Are you sure you want to delete the profile {{s.student_name}}')">Delete</a></td>
+        
+    </tr>
+    {% endfor %}
+</table>
