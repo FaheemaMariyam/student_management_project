@@ -13,3 +13,9 @@ def send_add_student_email(user_email,username,password):
     recipient_list=[user_email]
 
     send_mail(subject,message,from_email,recipient_list,fail_silently=False)
+def send_add_course_email(user_email,username,user_course):
+    subject='New course assigned'
+    message=f" Hi {username} you have assigned a new course {user_course},all the best"
+    from_email='faheemamariyam2102004@gmail.com'
+    recipient_list=[user_email]
+    send_mail(subject,message,from_email,recipient_list,fail_silently=False)

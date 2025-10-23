@@ -1,9 +1,9 @@
-from django.shortcuts import render,redirect
+from django.shortcuts import render,redirect,get_object_or_404
 from django.http import HttpResponse
 from django.contrib.auth import authenticate,login,logout
 from .forms import UserRegisterForm
 from .forms import StudentProfileForm
-from .models import StudentProfile
+from .models import StudentProfile,StudentCourse
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
@@ -16,11 +16,13 @@ from django.core.paginator import Paginator
 from django.core.mail import send_mail
 from django.core.mail import EmailMessage
 from student_management.settings import EMAIL_HOST_USER
-from .emails import send_welcome_email,send_add_student_email
-from .forms import CourseForm
+from .emails import send_welcome_email,send_add_student_email,send_add_course_email
+from .forms import CourseForm,StudentCourseCompletionForm
 from .models import Course
 def home(request):
     return render(request,'home.html')
+def about_us(request):
+    return render(request,'about.html')
 def register_user(request):
     if request.method=='POST':
         form=UserRegisterForm(request.POST)
@@ -93,6 +95,13 @@ def student_profile_edit(request):
     else:
         form=StudentProfileForm(instance=profile)
     return render(request,'student_profile_edit.html',{'form':form})
+@login_required
+def student_courses_view(request):
+    profile = StudentProfile.objects.get(user=request.user)
+    student_courses = profile.studentcourse_set.select_related('course').all()  # get StudentCourse objects
+    return render(request, 'my_courses.html', {'student_courses': student_courses})
+
+
 @staff_member_required
 def students_list(request):
     
@@ -143,6 +152,8 @@ def add_students(request):
         user_form=UserRegisterForm()
         profile_form=AdminStudentProfileForm()
     return render(request,'add_students.html',{'user_form': user_form, 'profile_form': profile_form})
+
+
 @staff_member_required
 def edit_students(request, pk):
     students_qset = StudentProfile.objects.filter(pk=pk)
@@ -158,6 +169,8 @@ def edit_students(request, pk):
 
         if user_form.is_valid() and profile_form.is_valid():
             user_form.save()
+            
+            # Save student instance first
             student = profile_form.save(commit=False)
 
             if student.date_of_birth:
@@ -167,7 +180,11 @@ def edit_students(request, pk):
                     age -= 1
                 student.age = age
 
-            student.save()
+            student.save()  # Save instance first
+            
+            # Save many-to-many courses
+            profile_form.save_m2m()
+
             messages.success(request, f"{student.student_name} updated successfully")
             return redirect('dashboard')
     else:
@@ -178,6 +195,8 @@ def edit_students(request, pk):
         'user_form': user_form,
         'profile_form': profile_form
     })
+
+
 @staff_member_required
 def delete_students(request,pk):
     students_qset=StudentProfile.objects.filter(pk=pk)
@@ -193,9 +212,18 @@ def delete_students(request,pk):
 @staff_member_required
 def add_course(request):
     if request.method=='POST':
+
         form=CourseForm(request.POST)
         if form.is_valid():
+
             form.save()
+            #notify admin via email
+            # course_instance = form.save()
+            # send_add_course_email(
+            #             request.user.email,
+            #             request.user.username,
+            #             course_instance.course_name
+            #         )
             messages.success(request,f"course added successfully")
             return redirect('dashboard')
     else:
@@ -205,3 +233,52 @@ def add_course(request):
 def course_list(request):
     courses=Course.objects.all()
     return render(request,'course_list.html',{'courses':courses})
+@staff_member_required
+def edit_course(request,pk):
+    course_qset=Course.objects.filter(pk=pk)
+    if not course_qset.exists():
+        messages.error(request,f"course doesnt exist")
+        return redirect('dashboard')
+    course=course_qset.first()
+    if request.method=='POST':
+        form=CourseForm(request.POST,instance=course)
+        if form.is_valid():
+            form.save()
+            messages.success(request,f"Course updated successfully")
+            return redirect('dashboard')
+    else:
+        form=CourseForm(instance=course)
+    return render(request,'edit_course.html',{'form':form})
+@staff_member_required
+def delete_course(request,pk):
+    course_qset=Course.objects.filter(pk=pk)
+    if not course_qset.exists():
+        messages.error(request,f" Course does not exist ")
+        return redirect('dashboard')
+    course=course_qset.first()
+
+    course_name=course.course_name  # store before delete
+
+    course.delete()
+    messages.success(request,f" {course_name} has been deleted successfully ")
+    return redirect('dashboard')
+@staff_member_required
+def complete_courses(request, student_id):
+    student = get_object_or_404(StudentProfile, pk=student_id)
+    student_courses = StudentCourse.objects.filter(student=student)
+
+    if request.method == 'POST':
+        for sc in student_courses:
+            form = StudentCourseCompletionForm(request.POST, instance=sc, prefix=str(sc.id))
+            if form.is_valid():
+                sc = form.save(commit=False)
+                if sc.completed and sc.completed_date is None:
+                    sc.completed_date = date.today()
+                elif not sc.completed:
+                    sc.completed_date = None
+                sc.save()
+        messages.success(request, f"Courses updated for {student.student_name}")
+        return redirect('edit_students', pk=student.id)
+
+    forms = [StudentCourseCompletionForm(instance=sc, prefix=str(sc.id)) for sc in student_courses]
+    return render(request, 'complete_courses.html', {'student': student, 'forms': forms})

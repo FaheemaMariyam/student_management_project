@@ -1,12 +1,21 @@
 <h2>Profile</h2>
 <p>Name: {{ profile.student_name|default:"Not filled" }}</p>
 <p>Roll Number: {{ profile.student_rollno|default:"Not filled" }}</p>
-<p>Course: {{ profile.student_course.course_name|default:"Not assigned" }}</p>
+
+<p>Courses: 
+    {% for course in profile.student_course.all %}
+        {{ course.course_name }}{% if not forloop.last %}, {% endif %}
+    {% empty %}
+        Not assigned
+    {% endfor %}
+</p>
+
 <p>Enrollment Date: {{ profile.student_enrollment_date|default:"Not filled" }}</p>
 <p>Phone: {{ profile.phone|default:"Not filled" }}</p>
 <p>Address: {{ profile.address|default:"Not filled" }}</p>
-<p>Date Of Birth:{{ profile.date_of_birth|default:'Not filled'}}</p>
+<p>Date Of Birth: {{ profile.date_of_birth|default:'Not filled' }}</p>
 <p>Age: {{ profile.age|default:"Not filled" }}</p>
+
 {% if profile.profile_image %}
     <img src="{{ profile.profile_image.url }}" alt="Profile Image" width="150">
 {% endif %}
