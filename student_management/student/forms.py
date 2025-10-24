@@ -4,7 +4,7 @@ from .models import User
 from .models import StudentProfile
 from datetime import date
 from .models import Course
-from .models import StudentCourse
+
 class UserRegisterForm(UserCreationForm):
     class Meta:
         model=User
@@ -30,12 +30,7 @@ class StudentProfileForm(forms.ModelForm):
                 }
             ),
         }
-class StudentCourseCompletionForm(forms.ModelForm):
-    completed = forms.BooleanField(required=False, label="Completed")
 
-    class Meta:
-        model = StudentCourse
-        fields = ['completed']
 class AdminStudentProfileForm(forms.ModelForm):
     student_course = forms.ModelMultipleChoiceField(
         queryset=Course.objects.all(),

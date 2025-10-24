@@ -1,9 +1,9 @@
-from django.shortcuts import render,redirect,get_object_or_404
+from django.shortcuts import render,redirect
 from django.http import HttpResponse
 from django.contrib.auth import authenticate,login,logout
 from .forms import UserRegisterForm
 from .forms import StudentProfileForm
-from .models import StudentProfile,StudentCourse
+from .models import StudentProfile
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
@@ -17,7 +17,7 @@ from django.core.mail import send_mail
 from django.core.mail import EmailMessage
 from student_management.settings import EMAIL_HOST_USER
 from .emails import send_welcome_email,send_add_student_email,send_add_course_email
-from .forms import CourseForm,StudentCourseCompletionForm
+from .forms import CourseForm
 from .models import Course
 def home(request):
     return render(request,'home.html')
@@ -97,10 +97,9 @@ def student_profile_edit(request):
     return render(request,'student_profile_edit.html',{'form':form})
 @login_required
 def student_courses_view(request):
-    profile = StudentProfile.objects.get(user=request.user)
-    student_courses = profile.studentcourse_set.select_related('course').all()  # get StudentCourse objects
-    return render(request, 'my_courses.html', {'student_courses': student_courses})
-
+    profile, created = StudentProfile.objects.get_or_create(user=request.user)
+    courses = profile.student_course.all()  # Get all assigned courses
+    return render(request, 'student_courses.html', {'courses': courses})
 
 @staff_member_required
 def students_list(request):
@@ -262,23 +261,4 @@ def delete_course(request,pk):
     course.delete()
     messages.success(request,f" {course_name} has been deleted successfully ")
     return redirect('dashboard')
-@staff_member_required
-def complete_courses(request, student_id):
-    student = get_object_or_404(StudentProfile, pk=student_id)
-    student_courses = StudentCourse.objects.filter(student=student)
 
-    if request.method == 'POST':
-        for sc in student_courses:
-            form = StudentCourseCompletionForm(request.POST, instance=sc, prefix=str(sc.id))
-            if form.is_valid():
-                sc = form.save(commit=False)
-                if sc.completed and sc.completed_date is None:
-                    sc.completed_date = date.today()
-                elif not sc.completed:
-                    sc.completed_date = None
-                sc.save()
-        messages.success(request, f"Courses updated for {student.student_name}")
-        return redirect('edit_students', pk=student.id)
-
-    forms = [StudentCourseCompletionForm(instance=sc, prefix=str(sc.id)) for sc in student_courses]
-    return render(request, 'complete_courses.html', {'student': student, 'forms': forms})
