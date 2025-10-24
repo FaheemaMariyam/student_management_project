@@ -25,26 +25,13 @@ class Course(models.Model):
     updated_at=models.DateTimeField(auto_now=True) # automatically updated when saved
     def __str__(self):
         return self.course_name
-class StudentCourse(models.Model):
-    student = models.ForeignKey('StudentProfile', on_delete=models.CASCADE)
-    course = models.ForeignKey('Course', on_delete=models.CASCADE)
-    completed = models.BooleanField(default=False)  # ✅ Track completion
-    assigned_date = models.DateField(auto_now_add=True)
-    completed_date = models.DateField(null=True, blank=True)
 
-    class Meta:
-        unique_together = ('student', 'course')
 
 class StudentProfile(models.Model):
     user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE)
     student_name = models.CharField(max_length=50, null=True, blank=True)
     student_rollno = models.IntegerField(null=True, blank=True, unique=True)
-    student_courses = models.ManyToManyField(
-        'Course',
-        through='StudentCourse',
-        blank=True,
-        related_name='students'
-    )
+    student_course = models.ManyToManyField('Course', blank=True)
     student_enrollment_date = models.DateField(null=True, blank=True)
 
     # Editable by student
